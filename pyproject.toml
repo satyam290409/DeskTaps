@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tapdeck"
+version = "2.0.0-dev"
+description = "Acoustic tap detection and zone-based desktop automation for Windows"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [{name = "TapDeck Contributors"}]
+keywords = ["acoustic", "tap-detection", "desktop-automation", "windows", "dsp"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+]
+
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.11",
+    "sounddevice>=0.4.6",
+    "PySide6>=6.5",
+    "pycaw>=20230407",
+    "comtypes>=1.2",
+    "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-qt>=4.2",
+    "pytest-cov>=4.1",
+    "ruff>=0.1",
+    "mypy>=1.5",
+]
+build = [
+    "pyinstaller>=6.0",
+]
+
+[project.scripts]
+tapdeck = "tapdeck.main:main"
+
+[project.gui-scripts]
+tapdeck-gui = "tapdeck.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "hardware: requires physical audio hardware (deselect with '-m \"not hardware\"')",
+    "slow: long-running tests (deselect with '-m \"not slow\"')",
+]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "TCH"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true

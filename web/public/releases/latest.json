@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "channel": "stable",
+  "releaseDate": "2026-10-30",
+  "minimumWindowsVersion": "Windows 10 (Build 19041+), 64-bit",
+  "asset": {
+    "filename": "TapDeck-Setup.exe",
+    "url": "https://github.com/tapdeck/tapdeck/releases/download/v2.0.0/TapDeck-Setup.exe",
+    "sha256": "8f481c9b32c668b5a0344d2d46e92750e3b97b0a379471f0ea3f40f3531b7829",
+    "sizeBytes": 34812900
+  },
+  "changelog": [
+    "Sub-millisecond four-zone acoustic transient localization engine (GCC-PHAT + HFR).",
+    "Support for eight distinct triggers (4 single zones and 4 dual chords).",
+    "Adaptive calibration wizard with Gaussian cluster separability checks.",
+    "Native Windows SendInput hotkey and media key dispatch with zero admin privilege required.",
+    "System tray background daemon with real-time health indicator."
+  ]
+}
