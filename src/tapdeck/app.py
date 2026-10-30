@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+import math
 import sys
 import threading
 import time
 from dataclasses import asdict
 from typing import Any
 
+import numpy as np
 from PySide6.QtCore import QObject, Qt, QThread, QTimer, Signal, Slot
 from PySide6.QtWidgets import QApplication
 
@@ -81,6 +83,12 @@ class ProcessingWorker(QObject):
 
                 if frame is None:
                     continue
+
+                # Calculate real-time audio level for live UI VU meter
+                raw_rms = float(np.sqrt(np.mean(frame.data.astype(np.float64, copy=False) ** 2)))
+                raw_peak = float(np.max(np.abs(frame.data)))
+                self.diagnostics.input_level_rms = raw_rms
+                self.diagnostics.input_level_peak = raw_peak
 
                 t0 = time.perf_counter()
 
@@ -172,8 +180,8 @@ class ProcessingWorker(QObject):
                     processing_latency=latency_ms,
                 )
 
-                # Emit diagnostic telemetry periodically (~5 Hz)
-                if now - self._last_diag_time >= 0.2:
+                # Emit diagnostic telemetry periodically (~20 Hz for smooth VU meter)
+                if now - self._last_diag_time >= 0.05:
                     self._last_diag_time = now
                     snap = self.diagnostics.snapshot()
                     self.diagnostics_updated.emit(asdict(snap))
@@ -253,9 +261,10 @@ class TapDeckApp:
         )
         self.detector = TransientDetector(
             DetectorConfig(
-                energy_threshold=0.01,
-                sta_lta_ratio=3.0,
-                peak_threshold=0.05,
+                energy_threshold=0.0003,
+                sta_lta_ratio=1.6,
+                peak_threshold=0.015,
+                refractory_ms=120.0,
                 sample_rate=sample_rate,
             )
         )
@@ -310,6 +319,16 @@ class TapDeckApp:
         self.worker.diagnostics_updated.connect(self.diag_window.update_diagnostics)
         self.worker.tap_detected.connect(self.diag_window.handle_tap_detected)
         self.worker.trigger_emitted.connect(self.diag_window.handle_trigger)
+
+        # Connect interactive controls from Diagnostics Window
+        raw_devs = [
+            {"index": d.index, "name": d.name} for d in self.device_manager.enumerate_devices()
+        ]
+        self.diag_window.set_devices(raw_devs, self.device_index)
+        self.diag_window.sensitivity_changed.connect(self._on_sensitivity_changed)
+        self.diag_window.device_changed.connect(self._on_device_changed)
+        self.diag_window.test_zone_clicked.connect(self._on_test_zone_clicked)
+        self.diag_window.pause_toggled.connect(self._on_pause_toggled)
 
         # 9. Periodic Combo Coincidence Timeout Timer (every 50ms)
         self._combo_timer = QTimer()
@@ -391,6 +410,51 @@ class TapDeckApp:
             logger.info("Resuming audio capture detection...")
             self.capture.resume()
             self.tray.set_state(TrayState.ACTIVE)
+
+    @Slot(float)
+    def _on_sensitivity_changed(self, new_threshold: float) -> None:
+        """Update detector threshold dynamically from UI slider."""
+        self.detector.config.energy_threshold = new_threshold
+        self.detector.config.peak_threshold = max(0.01, math.sqrt(new_threshold) * 0.8)
+        logger.info(
+            "Sensitivity updated: energy_thresh=%.5f, peak_thresh=%.4f",
+            new_threshold,
+            self.detector.config.peak_threshold,
+        )
+
+    @Slot(int)
+    def _on_device_changed(self, device_idx: int) -> None:
+        """Switch audio input device dynamically."""
+        logger.info("Switching audio input device to index %d", device_idx)
+        self.capture.stop()
+        self.capture.device_index = device_idx if device_idx >= 0 else None
+        self.device_index = self.capture.device_index
+        try:
+            self.capture.start()
+        except Exception as exc:
+            logger.error("Failed to start device %d: %s", device_idx, exc)
+
+    @Slot(str)
+    def _on_test_zone_clicked(self, zone_name: str) -> None:
+        """Execute action when user clicks quadrant in GUI."""
+        token_map = {
+            "LT": "SINGLE_LT",
+            "RT": "SINGLE_RT",
+            "LB": "SINGLE_LB",
+            "RB": "SINGLE_RB",
+        }
+        token = token_map.get(zone_name.upper(), zone_name)
+        logger.info("Test zone clicked: %s -> dispatching %s", zone_name, token)
+        tap_mock = {
+            "zone": zone_name.lower(),
+            "confidence": 1.0,
+            "delay_ms": -0.15 if "l" in zone_name.lower() else 0.15,
+            "hfr": 0.5 if "t" in zone_name.lower() else 1.8,
+            "energy": 0.005,
+            "timestamp": time.time(),
+        }
+        self.diag_window.handle_tap_detected(tap_mock)
+        self._on_trigger(token, 1.0)
 
     @Slot()
     def _on_show_requested(self) -> None:

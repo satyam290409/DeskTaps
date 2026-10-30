@@ -39,6 +39,8 @@ class AudioDiagnostics:
     cpu_percent: float
     memory_mb: float
     uptime_seconds: float
+    input_level_rms: float = 0.0
+    input_level_peak: float = 0.0
 
 
 class DiagnosticsCollector:
@@ -79,6 +81,8 @@ class DiagnosticsCollector:
         self.detection_accepted: int = 0
         self.detection_rejected: int = 0
         self.detection_duplicates: int = 0
+        self.input_level_rms: float = 0.0
+        self.input_level_peak: float = 0.0
 
         # Time-series history: list of (monotonic_timestamp, AudioDiagnostics)
         self._history: list[tuple[float, AudioDiagnostics]] = []
@@ -186,6 +190,8 @@ class DiagnosticsCollector:
                 cpu_percent=cpu_val,
                 memory_mb=round(mem_val, 2),
                 uptime_seconds=round(uptime, 2),
+                input_level_rms=self.input_level_rms,
+                input_level_peak=self.input_level_peak,
             )
 
             # Record in history buffer

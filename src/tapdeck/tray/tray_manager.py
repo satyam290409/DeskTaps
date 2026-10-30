@@ -114,7 +114,7 @@ class TrayManager(QObject):
         Returns:
             A QIcon containing the rendered circle pixmap.
         """
-        size = 32
+        size = 64
         pixmap = QPixmap(size, size)
         pixmap.fill(Qt.GlobalColor.transparent)
 
@@ -122,14 +122,14 @@ class TrayManager(QObject):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         # Outer border / subtle ring
-        pen = QPen(QColor("#111827"), 1.5)
+        pen = QPen(QColor("#111827"), 2.0)
         painter.setPen(pen)
 
         # Fill circle
         brush = QBrush(QColor(color_hex))
         painter.setBrush(brush)
 
-        margin = 4
+        margin = 6
         painter.drawEllipse(margin, margin, size - 2 * margin, size - 2 * margin)
         painter.end()
 

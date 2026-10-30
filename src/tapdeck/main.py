@@ -46,7 +46,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--diagnostics",
         action="store_true",
-        help="Launch in diagnostics/prototype mode",
+        default=True,
+        help="Launch with diagnostics/telemetry GUI window (default: True)",
+    )
+    parser.add_argument(
+        "--minimized",
+        action="store_true",
+        help="Start minimized to system tray without displaying the main window",
     )
     parser.add_argument(
         "--test-mode",
@@ -95,26 +101,16 @@ def main() -> int:
         return 0
 
     try:
-        if args.diagnostics:
-            logger.info("Launching diagnostics mode...")
-            from tapdeck.app import TapDeckApp
+        from tapdeck.app import TapDeckApp
 
-            app = TapDeckApp(
-                diagnostics_mode=True,
-                test_mode=args.test_mode,
-                device_index=args.device,
-            )
-            return app.run()
-        else:
-            logger.info("Launching full application...")
-            from tapdeck.app import TapDeckApp
-
-            app = TapDeckApp(
-                diagnostics_mode=False,
-                test_mode=args.test_mode,
-                device_index=args.device,
-            )
-            return app.run()
+        show_gui = not args.minimized
+        logger.info("Launching TapDeck (show_gui=%s, test_mode=%s)...", show_gui, args.test_mode)
+        app = TapDeckApp(
+            diagnostics_mode=show_gui,
+            test_mode=args.test_mode,
+            device_index=args.device,
+        )
+        return app.run()
     except KeyboardInterrupt:
         logger.info("Interrupted by user.")
         return 0
